@@ -33,6 +33,13 @@ select,input{width:100%;padding:11px 12px;border:1px solid #d7dce6;border-radius
   .school-unit{font-size:13px}
   .school-name{font-size:18px}
 }
+
+.autocomplete-wrap{position:relative}
+.subject-suggestions{position:absolute;left:0;right:0;top:calc(100% + 4px);z-index:1000;background:#fff;border:1px solid #d7dce6;border-radius:12px;box-shadow:0 10px 28px #15203822;max-height:240px;overflow-y:auto;display:none}
+.subject-suggestions.show{display:block}
+.subject-suggestion{padding:11px 12px;cursor:pointer;border-bottom:1px solid #eef1f5;font-size:14px}
+.subject-suggestion:last-child{border-bottom:0}
+.subject-suggestion:hover,.subject-suggestion:active{background:#eef3ff;color:#224b9a}
 </style></head><body><div class="wrap">
 <section class="hero">
   <div class="brand-head">
@@ -101,14 +108,28 @@ function subjectOptions(){
 }
 function addSubject(){
   const d=document.createElement("div");d.className="row";
-  const listId="subjectList_"+Math.random().toString(36).slice(2);
-  d.innerHTML=`<div>
-    <input class="subjInput" list="${listId}" placeholder="Taip subjek, contoh: Pendidikan Islam">
-    <datalist id="${listId}">${subjectOptions()}</datalist>
+  d.innerHTML=`<div class="autocomplete-wrap">
+    <input class="subjInput" autocomplete="off" placeholder="Taip subjek, contoh: Pendidikan Islam">
+    <div class="subject-suggestions"></div>
   </div>
   <div><select class="grade">${GRADES.map(g=>`<option value="${g}">${g||"Gred"}</option>`).join("")}</select></div>
   <button class="btn danger" onclick="this.parentElement.remove()">×</button>`;
   document.getElementById("extras").appendChild(d);
+  const input=d.querySelector(".subjInput"), box=d.querySelector(".subject-suggestions");
+  function renderSuggestions(){
+    const q=normalizeText(input.value);
+    if(!q){box.classList.remove("show");box.innerHTML="";return}
+    const matches=SUBJECTS.filter(s=>normalizeText(s.name).includes(q)||(s.aliases||[]).some(a=>normalizeText(a).includes(q))).slice(0,10);
+    box.innerHTML=matches.map(s=>`<div class="subject-suggestion" data-name="${s.name.replace(/&/g,"&amp;").replace(/"/g,"&quot;")}">${s.name}</div>`).join("");
+    box.classList.toggle("show",matches.length>0);
+  }
+  input.addEventListener("input",renderSuggestions);
+  input.addEventListener("focus",renderSuggestions);
+  box.addEventListener("pointerdown",e=>{
+    const item=e.target.closest(".subject-suggestion"); if(!item)return;
+    e.preventDefault(); input.value=item.dataset.name; box.classList.remove("show"); input.focus();
+  });
+  input.addEventListener("blur",()=>setTimeout(()=>box.classList.remove("show"),180));
 }
 function val(id){return document.getElementById(id).value} function isPass(g){return PASS.has(g)} function isCredit(g){return CREDIT.has(g)}
 function collect(){
